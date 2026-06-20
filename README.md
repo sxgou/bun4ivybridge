@@ -1,82 +1,90 @@
-# bun4ivybridge: 在 Ivy Bridge CPU 上从源码编译 Bun
+# bun4ivybridge: Build Bun from Source on Ivy Bridge CPUs
 
-在 Ivy Bridge 及更早的 x86-64 CPU 上从源码编译 Bun，解决预编译二进制因使用 AVX2/BMI2 指令而 SIGILL 崩溃的问题。
+在 Ivy Bridge CPU 上从源码编译 Bun。
 
-**已验证**: 2026-06-20 在 Intel Xeon E5-2696 v2 上成功编译并运行 bun 1.4.0。
+Build Bun from source on Ivy Bridge and older x86-64 CPUs, solving SIGILL crashes caused by AVX2/BMI2 instructions in prebuilt binaries.
 
-## 适用环境
+**Verified** / **已验证**: 2026-06-20, successfully compiled and ran bun 1.4.0 on Intel Xeon E5-2696 v2.
 
-- **CPU**: Intel Xeon E5-2696 v2 (Ivy Bridge, 2013) — 不支持 AVX2、BMI2、FMA
-- **操作系统**: macOS 12+ (Monterey，已验证 12.7.6)
-- **编译器**: LLVM/Clang 21（通过 Homebrew 安装 `brew install llvm@21`）
+---
 
-> ⚠️ **兼容性说明**
-> - 本项目的编译参数（`--baseline=true` → `-march=nehalem`）理论上适用于所有 x86-64 CPU
-> - **仅在 macOS 12+ 上验证**，其他操作系统（Linux、Windows）未测试
-> - 不同版本的 bun 源码其依赖的 WebKit 版本可能不同，WebKit 兼容性可能有差异
-> - build.sh 中的 WebKit 降级逻辑和 ldflags 修复是基于已知问题设计的，在其他环境中可能不需要
+## Environment / 适用环境
 
-## 问题背景
+- **CPU**: Intel Xeon E5-2696 v2 (Ivy Bridge, 2013) — no AVX2/BMI2/FMA support
+- **OS**: macOS 12+ (Monterey, verified on 12.7.6)
+- **Compiler**: LLVM/Clang 21 (`brew install llvm@21`)
+- **Prebuilt binary available**: See [Releases](https://github.com/sxgou/bun4ivybridge/releases)
 
-Bun 预编译的 macOS 二进制默认针对 Haswell (2014+) 及以上 CPU 优化，使用 AVX2/BMI2 指令。
-在 Ivy Bridge CPU 上运行会立即 SIGILL (exit code 132)。
+> ⚠️ **Compatibility / 兼容性说明**
+> - `--baseline=true` → `-march=nehalem` is theoretically compatible with all x86-64 CPUs
+> - **Only verified on macOS 12+** — Linux/Windows untested
+> - WebKit version may vary across bun commits
+> - WebKit fallback and ldflags fixes in build.sh are designed around known issues; may not be needed in other environments
 
-**解决方案**: 从源码编译，用 `--baseline=true` 标志指定 `-march=nehalem`，确保生成兼容所有 x86-64 CPU 的指令。
+## Background / 问题背景
 
-## 目录结构
+Bun's prebuilt macOS binaries target Haswell+ (2014+) CPUs using AVX2/BMI2 instructions. On Ivy Bridge CPUs they immediately crash with SIGILL (exit code 132).
+
+**Solution**: Build from source with `--baseline=true` (generates `-march=nehalem`), producing instructions compatible with all x86-64 CPUs.
+
+A **prebuilt macOS x86-64 binary** (true baseline, compatible with all Intel Macs) is available for direct download — check the [Releases](https://github.com/sxgou/bun4ivybridge/releases) page.
+
+## Directory Structure / 目录结构
 
 ```
 bun4ivybridge/
-├── DESIGN.md                          # 设计文档
-├── README.md                          # 本文件
+├── DESIGN.md                          # Design doc / 设计文档
+├── README.md                          # This file / 本文件
 ├── bootstrap/
-│   └── GET_BOOTSTRAP_BUN.md           # 如何获取 v1.1.20 bootstrap
+│   └── GET_BOOTSTRAP_BUN.md           # Getting bootstrap bun / 获取 bootstrap
 ├── config/
-│   └── cmake-args.sh                  # [仅参考] cmake 参数（仅影响依赖库编译）
+│   └── cmake-args.sh                  # [Reference] cmake args (affects deps only)
 ├── patches/
-│   └── ProcessObjectInternals.ts      # 修复 const enum 泄漏为运行时引用的 Bug
+│   ├── ProcessObjectInternals.ts      # Fix const enum leak at runtime
+│   └── scripts/
+│       ├── build/configure.ts         # globSync → readdirSync patch
+│       └── glob-sources.ts            # globSync → simpleGlobSync patch
 └── scripts/
-    ├── build.sh                       # 半自动化构建脚本（推荐使用）
-    └── compile-codegen.sh             # 手动编译 codegen 的备用脚本
+    ├── build.sh                       # Semi-automated build script (recommended)
+    └── compile-codegen.sh             # Manual codegen compilation (backup)
 ```
 
-## 快速开始（使用 build.sh）
+## Quick Start / 快速开始
 
 ```bash
-cd "$(dirname "$0")"  # 进入项目目录
-# 或: cd /path/to/bun4ivybridge
+cd /path/to/bun4ivybridge
 
-# 默认编译 6ef59777b (bun v1.4.0)
+# Build default commit 6ef59777b (bun v1.4.0)
 bash scripts/build.sh
 
-# 或指定自定义构建目录（避免 RAM 盘）
+# Custom build directory (avoid RAM disk)
 # BUILD_DIR=/tmp/bun-build bash scripts/build.sh
 ```
 
-脚本会引导你完成 9 个阶段的构建过程。
+The script guides you through 9 build phases.
 
-## 手动编译步骤
+## Manual Build Steps / 手动编译步骤
 
-### 1. 准备构建环境
+### 1. Prepare Environment / 准备构建环境
 
 ```bash
 brew install llvm@21 cmake ninja rust
 curl https://sh.rustup.rs -sSf | sh
 ```
 
-确保 bun >= 1.1.20 可用（用于运行 build.ts 配置步骤，需配合 globSync 补丁）。
+Ensure bun >= 1.1.20 is available (for running `build.ts` with globSync patches).
 
-### 2. 准备构建目录
+### 2. Prepare Build Directory / 准备构建目录
 
 ```bash
-# 可选: 创建 RAM 盘（加速编译，减少 SSD 磨损）
+# Optional: RAM disk (faster, reduces SSD wear)
 diskutil erasevolume APFS "bun-build" $(hdiutil attach -nomount ram://134217728)
 
-# 或直接在文件系统上构建
+# Or build on filesystem
 mkdir -p /Volumes/bun-build
 ```
 
-### 3. 克隆源码
+### 3. Clone Source / 克隆源码
 
 ```bash
 cd /Volumes/bun-build
@@ -85,135 +93,152 @@ cd bun
 git checkout 6ef59777b
 ```
 
-### 4. 应用补丁
+### 4. Apply Patches / 应用补丁
 
 ```bash
 cp /path/to/bun4ivybridge/patches/ProcessObjectInternals.ts \
   /Volumes/bun-build/bun/src/js/builtins/ProcessObjectInternals.ts
+
+cp /path/to/bun4ivybridge/patches/scripts/build/configure.ts \
+  /Volumes/bun-build/bun/scripts/build/configure.ts
+
+cp /path/to/bun4ivybridge/patches/scripts/glob-sources.ts \
+  /Volumes/bun-build/bun/scripts/glob-sources.ts
 ```
 
-### 5. 生成 build.ninja
+### 5. Generate build.ninja / 生成构建文件
 
 ```bash
 cd /Volumes/bun-build/bun
 
-# 这是关键步骤: --baseline=true 确保生成 -march=nehalem
+# Key step: --baseline=true ensures -march=nehalem
 bun scripts/build.ts --profile=release --baseline=true --configure-only
 ```
 
-验证 build.ninja 包含正确的 march:
+Verify the correct march:
 ```bash
 grep march build/release/build.ninja | head -3
-# 应看到: -march=nehalem
+# Expected: -march=nehalem
 ```
 
-### 6. 修复已知问题
+### 6. Fix Known Issues / 修复已知问题
 
 ```bash
-# 问题 1: macOS baseline WebKit 可能不存在
-# 如 WebKit 下载失败，手动下载 standard 版本:
+# Issue 1: macOS baseline WebKit may not exist
+# If WebKit download 404s, manually download standard version:
 # curl -L -o /tmp/webkit.tar.gz https://github.com/oven-sh/WebKit/releases/download/autobuild-<HASH>/bun-webkit-macos-amd64.tar.gz
 # mkdir -p ~/.bun/build-cache/webkit-<HASH>-macos-baseline
 # tar -xzf /tmp/webkit.tar.gz -C ~/.bun/build-cache/webkit-<HASH>-macos-baseline
 # echo "<HASH>-baseline" > ~/.bun/build-cache/webkit-<HASH>-macos-baseline/.identity
 
-# 问题 2: ldflags 缺少 llvm@21 lib 路径
+# Issue 2: ldflags missing llvm@21 lib path
 cd /Volumes/bun-build/bun/build/release
 if ! grep -q '\-L/usr/local/opt/llvm@21/lib' build.ninja; then
   sed -i '' 's|-Wl,-ld_new |-Wl,-ld_new -L/usr/local/opt/llvm@21/lib |g' build.ninja
 fi
 ```
 
-### 7. 编译
+### 7. Build / 编译
 
 ```bash
 cd /Volumes/bun-build/bun/build/release
 ninja -j$(sysctl -n hw.ncpu) bun-profile
 ```
 
-### 8. 验证
+### 8. Verify / 验证
 
 ```bash
 ./bun-profile --version
-# 期望: 1.4.0
+# Expected: 1.4.0
 
 ./bun-profile -e 'console.log(process.stderr.fd)'
-# 期望: 2
+# Expected: 2
 ```
 
-### 9. 安装
+### 9. Install / 安装
 
 ```bash
 cp ./bun-profile ~/.bun/bin/bun
 ```
 
-## 遇到的问题及解决办法
+## Known Issues & Solutions / 遇到的问题及解决办法
 
-### 问题 1: SIGILL — 预编译二进制使用 AVX2/BMI2 指令
+### Issue 1: SIGILL — Prebuilt binary uses AVX2/BMI2
 
-**现象**: 运行预编译的 `bun` 二进制立即退出，exit code 132。
+**Symptom**: Prebuilt `bun` exits immediately with code 132.
 
-**原因**: Bun 的 macOS 构建面向 Haswell (2014+) CPU，使用 AVX2/BMI2 指令。
+**Cause**: Bun's macOS build targets Haswell+ (2014+) using AVX2/BMI2 instructions.
 
-**解决**: 从源码编译，使用 `--baseline=true` 标志指定 `-march=nehalem`。
+**Solution**: Build from source with `--baseline=true` → `-march=nehalem`.
 
-### 问题 2: `BunProcessStdinFdType is not defined` — const enum 泄漏
+### Issue 2: `BunProcessStdinFdType is not defined` — const enum leak
 
-**现象**: 访问 `process.stderr` 时报错 `ReferenceError: $BunProcessStdinFdType is not defined`。
+**Symptom**: `ReferenceError: $BunProcessStdinFdType is not defined` when accessing `process.stderr`.
 
-**原因**: Bun 的 builtin 转译器在处理 TypeScript `const enum` 时没有完全内联。
+**Cause**: Bun's builtin transpiler doesn't fully inline TypeScript `const enum`.
 
-**解决**: 见补丁 `patches/ProcessObjectInternals.ts`。
+**Solution**: See patch `patches/ProcessObjectInternals.ts`.
 
-### 问题 3: macOS baseline WebKit 预编译包不存在
+### Issue 3: macOS baseline WebKit prebuilt not found
 
-**现象**: ninja 构建时 WebKit 下载返回 HTTP 404。
+**Symptom**: ninja gets HTTP 404 when downloading WebKit.
 
-**原因**: 某些 bun commit 的 GitHub Release 中没有 macOS baseline 变体。
+**Cause**: Some bun commits don't have a macOS baseline variant in GitHub Releases.
 
-**解决**: build.sh 自动降级下载 standard WebKit。已验证 standard WebKit 在 Ivy Bridge 上工作正常。
+**Solution**: build.sh automatically falls back to standard WebKit (verified working on Ivy Bridge).
 
-### 问题 4: 链接时 `library not found for -ld_new`
+### Issue 4: `library not found for -ld_new` at link time
 
-**现象**: 链接阶段报错 `ld: library not found for -ld_new`。
+**Symptom**: Linker error `ld: library not found for -ld_new`.
 
-**原因**: bun 的 build.ts 未自动检测 llvm@21 的 lib path。
+**Cause**: build.ts doesn't auto-detect llvm@21's lib path.
 
-**解决**: 在 ldflags 中添加 `-L/usr/local/opt/llvm@21/lib`。
+**Solution**: Add `-L/usr/local/opt/llvm@21/lib` to ldflags (Intel) or `/opt/homebrew/opt/llvm@21/lib` (Apple Silicon). build.sh autofixes this.
 
-### 问题 5: bootstrap bun v1.1.20 太旧（缺少 globSync API）
+### Issue 5: Bootstrap bun v1.1.20 lacks globSync API
 
-**现象**: 运行 `bun scripts/build.ts` 时报 `SyntaxError: Export named 'globSync' not found in module 'fs'`。
+**Symptom**: `SyntaxError: Export named 'globSync' not found in module 'fs'` when running `build.ts`.
 
-**原因**: v1.1.20 的 `node:fs` 模块缺少新版 bun 源码 build.ts 所需的 `globSync` API。
+**Cause**: v1.1.20's `node:fs` is missing `globSync` used by newer bun source.
 
-**解决**: 本项目提供了两个补丁（`patches/scripts/build/configure.ts`、`patches/scripts/glob-sources.ts`），将 `globSync` 替换为 `readdirSync` + `statSync` 实现，使 v1.1.20 能直接运行配置步骤。
+**Solution**: Two patches (`patches/scripts/build/configure.ts`, `patches/scripts/glob-sources.ts`) replace `globSync` with `readdirSync` + `statSync`.
 
-### 问题 6: Codegen 陈旧 .o 文件
+### Issue 6: Stale codegen .o files
 
-**现象**: 修改了补丁文件后，重新编译但问题仍然存在。
+**Symptom**: After patching, recompilation doesn't take effect.
 
-**原因**: .o 文件比 .cpp 源文件旧，ninja 未自动重新编译。
+**Cause**: `.o` files are older than their `.cpp` sources; ninja doesn't auto-rebuild.
 
-**解决**: build.sh 自动检查并删除陈旧 .o 文件。
+**Solution**: build.sh Phase 8 auto-detects and deletes stale `.o` files.
 
-## 补丁说明
+## Patch Reference / 补丁说明
 
 ### `patches/ProcessObjectInternals.ts`
 
-**作用**: 将 `const enum BunProcessStdinFdType` 替换为数值字面量，避免运行时引用错误。
+**Purpose**: Replaces `const enum BunProcessStdinFdType` with numeric literals to avoid runtime reference errors.
 
-**安装方式**: 复制到 Bun 源码目录的对应位置：
+**Install**:
 ```bash
 cp patches/ProcessObjectInternals.ts /Volumes/bun-build/bun/src/js/builtins/ProcessObjectInternals.ts
 ```
 
+### `patches/scripts/`
+
+Two patches that replace `globSync` with `readdirSync` + `statSync`, enabling bun v1.1.x to run the v1.4.0 build configuration:
+
+- `patches/scripts/build/configure.ts` — simple glob for `*.ts` and `deps/*.ts`
+- `patches/scripts/glob-sources.ts` — full implementation supporting `**`, `*.ext`, `{a,b,c}` brace expansion
+
 ### `scripts/compile-codegen.sh`
 
-**作用**: 当 ninja 不自动重编译 codegen 时的手动备用方案。适用于旧版 bun 配置生成的 build.ninja 中 codegen 规则是桩（stub）的情况。
+**Purpose**: Manual codegen recompilation when ninja's codegen rules are stubs (legacy bun configure).
 
-**使用方法**:
+**Usage**:
 ```bash
 cd /Volumes/bun-build/bun/build/release
 bash /path/to/bun4ivybridge/scripts/compile-codegen.sh
 ```
+
+## Prebuilt Binary / 预编译二进制
+
+A **true baseline** macOS x86-64 binary (compiled with `-march=nehalem`) is available on the [Releases](https://github.com/sxgou/bun4ivybridge/releases) page. It works on ALL Intel Macs from Nehalem (2008) onwards — no AVX2/BMI2 required.
