@@ -1,0 +1,18 @@
+# bun4ivybridge Homebrew dependencies
+#
+# These packages are required to build bun from source.
+# Install with:
+#   brew bundle --file=config/Brewfile
+#
+# Note: llvm@21 is keg-only, so it won't be symlinked into /usr/local/bin.
+#       build.sh auto-detects its location.
+
+# C++ compiler toolchain (llvm@21 provides clang++ 21)
+brew "llvm@21"
+
+# Build system
+brew "cmake"
+brew "ninja"
+
+# Rust (provides cargo, rustup is installed separately)
+brew "rust"

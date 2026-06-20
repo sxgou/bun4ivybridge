@@ -1,0 +1,15 @@
+# bun4ivybridge Rust toolchain pinning
+#
+# This file pins the Rust compiler version used to build bun.
+# Rust is used for native extensions and some build infrastructure.
+#
+# To update to a newer stable version:
+#   rustup update stable
+#   rustup show home   # check current version
+#   then update this file
+#
+# Verified with: rustc 1.94.0 (macOS 12.7.6, Xcode 14.2)
+
+[toolchain]
+channel = "1.94.0"
+targets = ["x86_64-apple-darwin"]

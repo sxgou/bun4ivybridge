@@ -1,17 +1,18 @@
 #!/bin/bash
-# cmake-args.sh — bun4ivybridge cmake 参数参考
+# cmake-args.sh — bun4ivybridge cmake arguments reference
 #
-# 注意: 此文件仅作参考用途。
-# bun 的主构建系统不使用 cmake —— 它使用 scripts/build.ts 生成 build.ninja。
-# cmake 仅用于编译部分依赖库（如 libarchive、libuv 等）。
+# Note: This file is for reference only.
+# bun's primary build system does NOT use cmake — it uses scripts/build.ts to
+# generate build.ninja. cmake is only used for compiling some dependencies
+# (libarchive, libuv, etc.).
 #
-# 设置 -march 的正确方式是:
+# The correct way to set -march is:
 #   bun scripts/build.ts --profile=release --baseline=true --configure-only
-# 这会在 build.ninja 中生成 -march=nehalem（通过 flags.ts 中的规则）。
+# This generates -march=nehalem in build.ninja (via flags.ts rules).
 #
-# cmake 的 -DCMAKE_CXX_FLAGS 不影响主构建代码的 march。
+# cmake's -DCMAKE_CXX_FLAGS does NOT affect the main build's march.
 #
-# 验证环境:
+# Verified environment:
 #   CPU: Intel Xeon E5-2696 v2 (Ivy Bridge)
 #   OS:  macOS 12+ (Monterey)
 #   CXX: llvm@21 (/usr/local/opt/llvm@21/bin/clang++)
@@ -25,5 +26,5 @@ CMAKE_ARGS=(
   -DCMAKE_C_COMPILER="/usr/local/opt/llvm@21/bin/clang"
 )
 
-# 如果 llvm@21 路径不同，使用以下命令查找:
-#   brew --prefix llvm@21  # → /usr/local/opt/llvm@21
+# If llvm@21 path differs, find it with:
+#   brew --prefix llvm@21  # -> /usr/local/opt/llvm@21

@@ -1,17 +1,17 @@
 #!/bin/bash
 #
-# compile-codegen.sh — 手动编译 codegen 的备用脚本
+# compile-codegen.sh — Manual codegen compilation fallback
 #
-# 当 ninja 不自动重编译 codegen 时的应急方案。
-# 注意: 这是一个辅助脚本，正常情况下 build.sh 的 Phase 8 会自动处理。
-# 仅在 ninja 无法正确处理 codegen 陈旧 .o 文件时使用。
+# Emergency script for when ninja does not auto-recompile codegen.
+# Normally build.sh Phase 8 handles this automatically.
+# Only use when ninja cannot process stale codegen .o files.
 #
-# 使用方法:
-#   bash compile-codegen.sh [构建目录]
+# Usage:
+#   bash compile-codegen.sh [build_dir]
 #
-# 环境变量:
-#   BUILD_DIR       构建目录 (默认: /Volumes/bun-build)
-#   LLVM_PREFIX     llvm 安装前缀 (默认: 自动检测 Homebrew llvm@21)
+# Environment variables:
+#   BUILD_DIR       Build directory (default: /Volumes/bun-build)
+#   LLVM_PREFIX     LLVM installation prefix (default: auto-detect Homebrew llvm@21)
 #
 set -euo pipefail
 
@@ -19,25 +19,58 @@ BUILD_DIR="${BUILD_DIR:-${1:-/Volumes/bun-build}}"
 BUN_SRC_DIR="$BUILD_DIR/bun"
 RELEASE_DIR="$BUN_SRC_DIR/build/release"
 
-# 自动检测 Homebrew llvm@21 路径
+# Auto-detect Homebrew llvm@21 path (supports Intel and Apple Silicon)
 if [[ -z "${LLVM_PREFIX:-}" ]]; then
   if [[ -x "/usr/local/opt/llvm@21/bin/clang++" ]]; then
     LLVM_PREFIX="/usr/local/opt/llvm@21"
   elif [[ -x "/opt/homebrew/opt/llvm@21/bin/clang++" ]]; then
     LLVM_PREFIX="/opt/homebrew/opt/llvm@21"
   else
-    echo "[ERROR] 未找到 llvm@21，请安装: brew install llvm@21"
+    echo "[ERROR] llvm@21 not found. Install: brew install llvm@21"
     exit 1
   fi
 fi
 
 CXX="$LLVM_PREFIX/bin/clang++"
 
-# 自动检测 Xcode SDK 路径
+# Auto-detect Xcode SDK path
 if ! SDK_PATH=$(xcrun --sdk macosx --show-sdk-path 2>/dev/null); then
-  echo "[ERROR] Xcode SDK 未找到，请运行: xcode-select --install"
+  echo "[ERROR] Xcode SDK not found. Run: xcode-select --install"
   exit 1
 fi
+
+# Detect WebKit include path from build.ninja, or use a reasonable default
+detect_webkit_include() {
+  local identity
+  identity=$(grep 'identity =' "$RELEASE_DIR/build.ninja" 2>/dev/null | grep webkit | awk '{print $NF}')
+  if [[ -n "$identity" ]]; then
+    echo "$HOME/.bun/build-cache/$identity/include"
+    return 0
+  fi
+  # Fallback: try to find any webkit cache directory
+  local webkit_dir
+  webkit_dir=$(ls -d "$HOME/.bun/build-cache/"webkit-* 2>/dev/null | head -1)
+  if [[ -n "$webkit_dir" ]]; then
+    echo "$webkit_dir/include"
+    return 0
+  fi
+  echo "$HOME/.bun/build-cache/webkit-cd821fecca0d39c8-macos-baseline/include"
+}
+
+WEBKIT_INCLUDE=$(detect_webkit_include)
+
+# Detect Node.js headers path
+detect_nodejs_include() {
+  local node_dir
+  node_dir=$(ls -d "$HOME/.bun/build-cache/"nodejs-headers-* 2>/dev/null | head -1)
+  if [[ -n "$node_dir" ]]; then
+    echo "$node_dir/include"
+    return 0
+  fi
+  echo "$HOME/.bun/build-cache/nodejs-headers-26.3.0/include"
+}
+
+NODEJS_INCLUDE=$(detect_nodejs_include)
 
 CXXFLAGS=(
   -march=nehalem
@@ -103,8 +136,8 @@ CXXFLAGS=(
   -I"$BUN_SRC_DIR/src/jsc/bindings/libuv"
   -I"$RELEASE_DIR"
   -I"$BUN_SRC_DIR/vendor/picohttpparser"
-  -I"$HOME/.bun/build-cache/nodejs-headers-26.3.0/include"
-  -I"$HOME/.bun/build-cache/nodejs-headers-26.3.0/include/node"
+  -I"$NODEJS_INCLUDE"
+  -I"$NODEJS_INCLUDE/node"
   -I"$RELEASE_DIR/deps/zlib"
   -I"$BUN_SRC_DIR/vendor/zstd/lib"
   -I"$BUN_SRC_DIR/vendor/brotli/c/include"
@@ -124,7 +157,7 @@ CXXFLAGS=(
   -I"$BUN_SRC_DIR/vendor/mimalloc/include"
   -I"$BUN_SRC_DIR/vendor/boringssl/include"
   -I"$BUN_SRC_DIR/vendor/lsquic/include"
-  -I"$HOME/.bun/build-cache/webkit-cd821fecca0d39c8-macos-baseline/include"
+  -I"$WEBKIT_INCLUDE"
   -D_HAS_EXCEPTIONS=0
   -DLIBUS_USE_OPENSSL=1
   -DLIBUS_USE_BORINGSSL=1
