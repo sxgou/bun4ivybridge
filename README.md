@@ -95,6 +95,15 @@ The script guides you through 9 build phases. Use `--yes` for fully unattended o
 
 ## Manual Build Steps
 
+### 0. Clone This Project
+
+```bash
+git clone https://github.com/sxgou/bun4ivybridge.git
+cd bun4ivybridge
+```
+
+All steps below assume you are in the `bun4ivybridge` directory.
+
 ### 1. Prepare Environment
 
 ```bash
