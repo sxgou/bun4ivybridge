@@ -178,10 +178,13 @@ grep march build/release/build.ninja | head -3
 
 # Issue 2: ldflags missing llvm@21 lib path
 cd /Volumes/bun-build/bun/build/release
-if ! grep -q '\-L/usr/local/opt/llvm@21/lib' build.ninja; then
-  sed -i '' 's|-Wl,-ld_new |-Wl,-ld_new -L/usr/local/opt/llvm@21/lib |g' build.ninja
+LLVM_LIB=$(brew --prefix llvm@21)/lib
+if ! grep -q "\-L$LLVM_LIB" build.ninja; then
+  sed -i '' 's|-Wl,-ld_new |-Wl,-ld_new -L'"$LLVM_LIB"' |g' build.ninja
 fi
 ```
+
+*Note: The script above auto-detects the correct path via `brew --prefix`. On Intel it resolves to `/usr/local/opt/llvm@21/lib`, on Apple Silicon `/opt/homebrew/opt/llvm@21/lib`.*
 
 ### 7. Build
 
