@@ -77,13 +77,14 @@ bun4ivybridge/
 ## Quick Start
 
 ```bash
-# Ensure all dependencies are installed (see Environment Requirements above)
-cd /path/to/bun4ivybridge
+# 1. Clone this project
+git clone https://github.com/sxgou/bun4ivybridge.git
+cd bun4ivybridge
 
-# Install dependencies via Brewfile
+# 2. Ensure all dependencies are installed (see Environment Requirements above)
 brew bundle --file=config/Brewfile
 
-# Build default commit 6ef59777b (bun v1.4.0)
+# 3. Build default commit 6ef59777b (bun v1.4.0)
 bash scripts/build.sh --yes
 
 # Custom build directory (avoid RAM disk)
