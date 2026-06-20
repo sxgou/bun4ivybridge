@@ -24,6 +24,7 @@ cd /tmp
 unzip bun-darwin-x64-baseline.zip
 
 # 3. Install
+mkdir -p ~/.bun/bin
 cp /tmp/bun-darwin-x64-baseline/bun ~/.bun/bin/bun
 chmod +x ~/.bun/bin/bun
 
