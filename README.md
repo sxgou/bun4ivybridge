@@ -1,27 +1,25 @@
 # bun4ivybridge: Build Bun from Source on Ivy Bridge CPUs
 
-在 Ivy Bridge CPU 上从源码编译 Bun。
-
 Build Bun from source on Ivy Bridge and older x86-64 CPUs, solving SIGILL crashes caused by AVX2/BMI2 instructions in prebuilt binaries.
 
-**Verified** / **已验证**: 2026-06-20, successfully compiled and ran bun 1.4.0 on Intel Xeon E5-2696 v2.
+**Verified**: 2026-06-20, successfully compiled and ran bun 1.4.0 on Intel Xeon E5-2696 v2.
 
 ---
 
-## Environment / 适用环境
+## Environment
 
 - **CPU**: Intel Xeon E5-2696 v2 (Ivy Bridge, 2013) — no AVX2/BMI2/FMA support
 - **OS**: macOS 12+ (Monterey, verified on 12.7.6)
 - **Compiler**: LLVM/Clang 21 (`brew install llvm@21`)
 - **Prebuilt binary available**: See [Releases](https://github.com/sxgou/bun4ivybridge/releases)
 
-> ⚠️ **Compatibility / 兼容性说明**
+> ⚠️ **Compatibility**
 > - `--baseline=true` → `-march=nehalem` is theoretically compatible with all x86-64 CPUs
 > - **Only verified on macOS 12+** — Linux/Windows untested
 > - WebKit version may vary across bun commits
 > - WebKit fallback and ldflags fixes in build.sh are designed around known issues; may not be needed in other environments
 
-## Background / 问题背景
+## Background
 
 Bun's prebuilt macOS binaries target Haswell+ (2014+) CPUs using AVX2/BMI2 instructions. On Ivy Bridge CPUs they immediately crash with SIGILL (exit code 132).
 
@@ -29,14 +27,14 @@ Bun's prebuilt macOS binaries target Haswell+ (2014+) CPUs using AVX2/BMI2 instr
 
 A **prebuilt macOS x86-64 binary** (true baseline, compatible with all Intel Macs) is available for direct download — check the [Releases](https://github.com/sxgou/bun4ivybridge/releases) page.
 
-## Directory Structure / 目录结构
+## Directory Structure
 
 ```
 bun4ivybridge/
-├── DESIGN.md                          # Design doc / 设计文档
-├── README.md                          # This file / 本文件
+├── DESIGN.md                          # Design doc
+├── README.md                          # This file
 ├── bootstrap/
-│   └── GET_BOOTSTRAP_BUN.md           # Getting bootstrap bun / 获取 bootstrap
+│   └── GET_BOOTSTRAP_BUN.md           # Getting bootstrap bun
 ├── config/
 │   └── cmake-args.sh                  # [Reference] cmake args (affects deps only)
 ├── patches/
@@ -49,7 +47,7 @@ bun4ivybridge/
     └── compile-codegen.sh             # Manual codegen compilation (backup)
 ```
 
-## Quick Start / 快速开始
+## Quick Start
 
 ```bash
 cd /path/to/bun4ivybridge
@@ -63,9 +61,9 @@ bash scripts/build.sh
 
 The script guides you through 9 build phases.
 
-## Manual Build Steps / 手动编译步骤
+## Manual Build Steps
 
-### 1. Prepare Environment / 准备构建环境
+### 1. Prepare Environment
 
 ```bash
 brew install llvm@21 cmake ninja rust
@@ -74,7 +72,7 @@ curl https://sh.rustup.rs -sSf | sh
 
 Ensure bun >= 1.1.20 is available (for running `build.ts` with globSync patches).
 
-### 2. Prepare Build Directory / 准备构建目录
+### 2. Prepare Build Directory
 
 ```bash
 # Optional: RAM disk (faster, reduces SSD wear)
@@ -84,7 +82,7 @@ diskutil erasevolume APFS "bun-build" $(hdiutil attach -nomount ram://134217728)
 mkdir -p /Volumes/bun-build
 ```
 
-### 3. Clone Source / 克隆源码
+### 3. Clone Source
 
 ```bash
 cd /Volumes/bun-build
@@ -93,7 +91,7 @@ cd bun
 git checkout 6ef59777b
 ```
 
-### 4. Apply Patches / 应用补丁
+### 4. Apply Patches
 
 ```bash
 cp /path/to/bun4ivybridge/patches/ProcessObjectInternals.ts \
@@ -106,7 +104,7 @@ cp /path/to/bun4ivybridge/patches/scripts/glob-sources.ts \
   /Volumes/bun-build/bun/scripts/glob-sources.ts
 ```
 
-### 5. Generate build.ninja / 生成构建文件
+### 5. Generate build.ninja
 
 ```bash
 cd /Volumes/bun-build/bun
@@ -121,7 +119,7 @@ grep march build/release/build.ninja | head -3
 # Expected: -march=nehalem
 ```
 
-### 6. Fix Known Issues / 修复已知问题
+### 6. Fix Known Issues
 
 ```bash
 # Issue 1: macOS baseline WebKit may not exist
@@ -138,14 +136,14 @@ if ! grep -q '\-L/usr/local/opt/llvm@21/lib' build.ninja; then
 fi
 ```
 
-### 7. Build / 编译
+### 7. Build
 
 ```bash
 cd /Volumes/bun-build/bun/build/release
 ninja -j$(sysctl -n hw.ncpu) bun-profile
 ```
 
-### 8. Verify / 验证
+### 8. Verify
 
 ```bash
 ./bun-profile --version
@@ -155,13 +153,13 @@ ninja -j$(sysctl -n hw.ncpu) bun-profile
 # Expected: 2
 ```
 
-### 9. Install / 安装
+### 9. Install
 
 ```bash
 cp ./bun-profile ~/.bun/bin/bun
 ```
 
-## Known Issues & Solutions / 遇到的问题及解决办法
+## Known Issues & Solutions
 
 ### Issue 1: SIGILL — Prebuilt binary uses AVX2/BMI2
 
@@ -211,7 +209,7 @@ cp ./bun-profile ~/.bun/bin/bun
 
 **Solution**: build.sh Phase 8 auto-detects and deletes stale `.o` files.
 
-## Patch Reference / 补丁说明
+## Patch Reference
 
 ### `patches/ProcessObjectInternals.ts`
 
@@ -239,6 +237,6 @@ cd /Volumes/bun-build/bun/build/release
 bash /path/to/bun4ivybridge/scripts/compile-codegen.sh
 ```
 
-## Prebuilt Binary / 预编译二进制
+## Prebuilt Binary
 
 A **true baseline** macOS x86-64 binary (compiled with `-march=nehalem`) is available on the [Releases](https://github.com/sxgou/bun4ivybridge/releases) page. It works on ALL Intel Macs from Nehalem (2008) onwards — no AVX2/BMI2 required.
