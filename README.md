@@ -6,18 +6,45 @@ Build Bun from source on Ivy Bridge and older x86-64 CPUs, solving SIGILL crashe
 
 ---
 
-## Environment
+## Environment Requirements
 
-- **CPU**: Intel Xeon E5-2696 v2 (Ivy Bridge, 2013) — no AVX2/BMI2/FMA support
-- **OS**: macOS 12+ (Monterey, verified on 12.7.6)
-- **Compiler**: LLVM/Clang 21 (`brew install llvm@21`)
-- **Prebuilt binary available**: See [Releases](https://github.com/sxgou/bun4ivybridge/releases)
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| **CPU** | Intel x86-64 (Nehalem+, e.g. Ivy Bridge) | Must support at least SSE4.2. No AVX2/BMI2 required. |
+| **OS** | macOS 12+ (Monterey, verified 12.7.6) | Other OS untested. Linux may work with toolchain adjustments. |
+| **Xcode CLI Tools** | Any version with macOS 12+ SDK | Install: `xcode-select --install`. Required for `xcrun`, SDK headers, and linker. |
+| **Homebrew** | Latest | Required to install toolchain packages. Install: https://brew.sh |
+| **LLVM/Clang** | llvm@21 | `brew install llvm@21`. Provides `clang++` for C++23 compilation. |
+| **CMake** | >= 3.20 | `brew install cmake`. Used for dependency builds. |
+| **Ninja** | >= 1.10 | `brew install ninja`. Build system executor. |
+| **Rust** | 1.94.0 (pinned in `rust-toolchain.toml`) | `brew install rust` + `curl https://sh.rustup.rs -sSf \| sh`. Required for native extensions. |
+| **Bun (bootstrap)** | >= 1.1.20, < 1.2.0 | Used to run `build.ts` configure step. See `bootstrap/GET_BOOTSTRAP_BUN.md`. |
+| **Disk space** | >= 40 GB free | Build directory default is RAM disk (64 GB). Filesystem fallback requires ~15 GB. |
+| **RAM** | >= 16 GB (32 GB+ recommended) | Linking is memory-intensive. |
 
-> ⚠️ **Compatibility**
+### Quick Install All Dependencies
+
+```bash
+# 1. Xcode Command Line Tools
+xcode-select --install
+
+# 2. Homebrew (if not installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 3. Toolchain packages
+brew bundle --file=config/Brewfile
+
+# 4. Rust
+curl https://sh.rustup.rs -sSf | sh
+
+# 5. Bootstrap bun (see bootstrap/GET_BOOTSTRAP_BUN.md)
+```
+
+> ⚠️ **Compatibility Notes**
 > - `--baseline=true` → `-march=nehalem` is theoretically compatible with all x86-64 CPUs
 > - **Only verified on macOS 12+** — Linux/Windows untested
 > - WebKit version may vary across bun commits
-> - WebKit fallback and ldflags fixes in build.sh are designed around known issues; may not be needed in other environments
+> - WebKit fallback and ldflags fixes in build.sh are designed around known issues; may not be needed in all environments
 
 ## Background
 
@@ -33,40 +60,50 @@ A **prebuilt macOS x86-64 binary** (true baseline, compatible with all Intel Mac
 bun4ivybridge/
 ├── DESIGN.md                          # Design doc
 ├── README.md                          # This file
-├── bootstrap/
-│   └── GET_BOOTSTRAP_BUN.md           # Getting bootstrap bun
 ├── config/
+│   ├── Brewfile                       # Homebrew dependency lockfile
 │   └── cmake-args.sh                  # [Reference] cmake args (affects deps only)
 ├── patches/
 │   ├── ProcessObjectInternals.ts      # Fix const enum leak at runtime
 │   └── scripts/
 │       ├── build/configure.ts         # globSync → readdirSync patch
 │       └── glob-sources.ts            # globSync → simpleGlobSync patch
+├── rust-toolchain.toml                # Rust toolchain pinning
 └── scripts/
-    ├── build.sh                       # Semi-automated build script (recommended)
+    ├── build.sh                       # Automated build script (recommended)
     └── compile-codegen.sh             # Manual codegen compilation (backup)
 ```
 
 ## Quick Start
 
 ```bash
+# Ensure all dependencies are installed (see Environment Requirements above)
 cd /path/to/bun4ivybridge
 
+# Install dependencies via Brewfile
+brew bundle --file=config/Brewfile
+
 # Build default commit 6ef59777b (bun v1.4.0)
-bash scripts/build.sh
+bash scripts/build.sh --yes
 
 # Custom build directory (avoid RAM disk)
 # BUILD_DIR=/tmp/bun-build bash scripts/build.sh
 ```
 
-The script guides you through 9 build phases.
+The script guides you through 9 build phases. Use `--yes` for fully unattended operation.
 
 ## Manual Build Steps
 
 ### 1. Prepare Environment
 
 ```bash
-brew install llvm@21 cmake ninja rust
+# Install Xcode CLI tools
+xcode-select --install
+
+# Install Homebrew packages
+brew bundle --file=config/Brewfile
+
+# Install Rust
 curl https://sh.rustup.rs -sSf | sh
 ```
 
