@@ -23,7 +23,7 @@
 #   2. build.ninja 可能缺少 LLVM lib 路径
 #      → 脚本自动检测并修复 ldflags（支持 Intel 和 Apple Silicon）
 #   3. bootstrap bun v1.1.20 太旧（缺少 globSync API），无法直接运行 build.ts
-#      → 需要 bun >= 1.4.0 来执行配置步骤
+#      → 已通过补丁解决（patches/scripts/build/configure.ts + glob-sources.ts）
 #
 set -euo pipefail
 
@@ -143,11 +143,11 @@ fi
 BUN_BOOTSTRAP_VER=$("$BUN_BOOTSTRAP" --version 2>/dev/null || echo "0.0.0")
 info "bun 编译工具版本: $BUN_BOOTSTRAP_VER"
 if [[ "$(printf '%s\n' "1.4.0" "$BUN_BOOTSTRAP_VER" | sort -V | head -1)" != "1.4.0" ]]; then
-  warn "bun 编译工具需要 >= 1.4.0 才能运行 build.ts（配置步骤）"
+  warn "bun 编译工具需要 >= 1.1.20 才能运行 build.ts（配置步骤）"
   warn "当前版本: $BUN_BOOTSTRAP_VER"
   warn ""
-  warn "bun v1.1.20 太旧（缺少 globSync API），无法直接运行 build.ts"
-  warn "建议: 使用已经可用的 bun v1.4.0+ 作为编译工具"
+  warn "版本太旧的话，已提供 globSync 补丁来解决 API 缺失问题"
+  warn "建议: 使用 bun v1.1.20+ 作为编译工具"
   warn ""
   confirm "使用当前 bun 继续？可能失败。"
 fi

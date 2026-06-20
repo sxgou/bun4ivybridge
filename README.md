@@ -64,7 +64,7 @@ brew install llvm@21 cmake ninja rust
 curl https://sh.rustup.rs -sSf | sh
 ```
 
-确保 bun >= 1.4.0 可用（用于运行 build.ts 配置步骤）。
+确保 bun >= 1.1.20 可用（用于运行 build.ts 配置步骤，需配合 globSync 补丁）。
 
 ### 2. 准备构建目录
 
