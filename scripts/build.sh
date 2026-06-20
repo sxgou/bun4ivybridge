@@ -162,6 +162,23 @@ extract_webkit_url() {
   grep 'url =' "$BUILD_RELEASE_DIR/build.ninja" 2>/dev/null | grep webkit | awk '{print $NF}' || echo ""
 }
 
+# ver_lte: returns 0 if $1 <= $2 (semver comparison), 1 otherwise
+# Portable implementation that works on both BSD and GNU systems.
+ver_lte() {
+  local a="$1" b="$2"
+  # Split into components and compare numerically
+  local IFS=.
+  local a_parts=($a) b_parts=($b)
+  local i max_idx
+  max_idx=$(( ${#a_parts[@]} > ${#b_parts[@]} ? ${#a_parts[@]} : ${#b_parts[@]} ))
+  for i in $(seq 0 $((max_idx - 1))); do
+    local ai="${a_parts[$i]:-0}" bi="${b_parts[$i]:-0}"
+    if (( ai < bi )); then return 0; fi
+    if (( ai > bi )); then return 1; fi
+  done
+  return 0
+}
+
 # skip_phase: returns 0 if the phase should run, 1 if it should be skipped
 # goto_phase is the first phase to run (skip all earlier phases)
 goto_phase="${goto_phase:-}"
@@ -229,7 +246,7 @@ info "Bootstrap bun version: $BUN_BOOTSTRAP_VER"
 # Minimum required: 1.1.20 (older versions lack globSync needed by build.ts)
 # But if patches are applied, even 1.1.20 works. Versions below 1.1.20 may fail.
 MIN_BUN="1.1.20"
-if [[ "$(printf '%s\n' "$MIN_BUN" "$BUN_BOOTSTRAP_VER" | sort -V | head -1)" != "$MIN_BUN" ]]; then
+if ! ver_lte "$MIN_BUN" "$BUN_BOOTSTRAP_VER"; then
   warn "Bootstrap bun should be >= $MIN_BUN to run build.ts (configure step)"
   warn "Current version: $BUN_BOOTSTRAP_VER"
   warn ""
@@ -314,10 +331,12 @@ if skip_phase 3; then
     { err "Cannot fetch commit $BUN_COMMIT. Check BUN_COMMIT."; exit 1; }
   git checkout "$BUN_COMMIT"
   ok "Checked out: $(git log --oneline -1)"
+fi
 
-  # ============================================================
-  # Phase 4: Apply Patches
-  # ============================================================
+# ============================================================
+# Phase 4: Apply Patches
+# ============================================================
+if skip_phase 4; then
   step "Phase 4/9: Apply Patches"
 
   if [[ -f "$PROJECT_DIR/patches/ProcessObjectInternals.ts" ]]; then
@@ -340,10 +359,12 @@ if skip_phase 3; then
       "$BUILD_BUN_DIR/scripts/glob-sources.ts"
     ok "Applied patch: scripts/glob-sources.ts (globSync -> simpleGlobSync)"
   fi
+fi
 
-  # ============================================================
-  # Phase 5: Generate build.ninja
-  # ============================================================
+# ============================================================
+# Phase 5: Generate build.ninja
+# ============================================================
+if skip_phase 5; then
   step "Phase 5/9: Generate build.ninja (bun configure)"
 
   cd "$BUILD_BUN_DIR"
@@ -369,10 +390,12 @@ if skip_phase 3; then
     warn "build.ninja does not contain -march=$MARCH. Check --baseline parameter."
     confirm "Continue building?" || exit 1
   fi
+fi
 
-  # ============================================================
-  # Phase 6: Fix Known Issues in build.ninja
-  # ============================================================
+# ============================================================
+# Phase 6: Fix Known Issues in build.ninja
+# ============================================================
+if skip_phase 6; then
   step "Phase 6/9: Fix Known Issues in build.ninja"
 
   # Issue 1: macOS baseline WebKit may not exist in GitHub Releases
